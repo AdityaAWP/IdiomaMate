@@ -1,0 +1,4 @@
+ *.md
+ config.yaml
+ api.exe
+ tmp/
