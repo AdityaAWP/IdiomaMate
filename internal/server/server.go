@@ -46,7 +46,7 @@ func (s *Server) Run() error {
 	authService := service.NewAuthService(userRepo, s.cfg.JWT.Secret, jwtExpiration)
 
 	// 3. Initialize Handlers
-	authHandler := httpHandler.NewAuthHandler(authService)
+	authHandler := httpHandler.NewAuthHandler(authService, s.cfg.Google.ClientID)
 
 	// 4. Setup Routes
 	deps := &routes.Dependencies{

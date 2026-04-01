@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 
 	"github.com/AdityaAWP/IdiomaMate/internal/domain"
 
@@ -20,7 +21,20 @@ func NewUserRepository(db *gorm.DB) domain.UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
-	return r.db.WithContext(ctx).Create(user).Error
+	err := r.db.WithContext(ctx).Create(user).Error
+	if err != nil {
+		if strings.Contains(err.Error(), "23505") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+			if strings.Contains(err.Error(), "email") {
+				return domain.ErrEmailAlreadyExists
+			}
+			if strings.Contains(err.Error(), "username") {
+				return domain.ErrUsernameAlreadyExists
+			}
+			return domain.ErrEmailAlreadyExists // fallback
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {

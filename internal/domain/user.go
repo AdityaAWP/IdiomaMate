@@ -37,6 +37,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
+type GoogleLoginRequest struct {
+	IDToken string `json:"id_token" binding:"required"`
+}
+
 type UpdateProfileRequest struct {
 	NativeLanguage   *string `json:"native_language"`
 	TargetLanguage   *string `json:"target_language"`

@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine, deps *Dependencies) {
 	{
 		auth.POST("/register", deps.AuthHandler.Register)
 		auth.POST("/login", deps.AuthHandler.Login)
+		auth.POST("/google", deps.AuthHandler.GoogleLogin)
 	}
 
 	protected := router.Group("/api/v1")
