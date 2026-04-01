@@ -53,7 +53,10 @@ type RoomRepository interface {
 
 	AddParticipant(ctx context.Context, participant *RoomParticipant) error
 	RemoveParticipant(ctx context.Context, roomID, userID uuid.UUID) error
+	GetParticipant(ctx context.Context, roomID, userID uuid.UUID) (*RoomParticipant, error)
+	UpdateParticipantStatus(ctx context.Context, roomID, userID uuid.UUID, status JoinStatus) error
 	GetParticipants(ctx context.Context, roomID uuid.UUID) ([]RoomParticipant, error)
+	GetMaster(ctx context.Context, roomID uuid.UUID) (*RoomParticipant, error)
 	CountParticipants(ctx context.Context, roomID uuid.UUID) (int, error)
 	IsUserInRoom(ctx context.Context, roomID, userID uuid.UUID) (bool, error)
 }

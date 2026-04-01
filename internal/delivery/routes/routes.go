@@ -13,6 +13,7 @@ import (
 type Dependencies struct {
 	AuthHandler *httpHandler.AuthHandler
 	UserHandler *httpHandler.UserHandler
+	RoomHandler *httpHandler.RoomHandler
 	UserRepo    domain.UserRepository
 	JWTSecret   string
 }
@@ -46,6 +47,18 @@ func SetupRoutes(router *gin.Engine, deps *Dependencies) {
 	features.Use(middleware.ProfileComplete(deps.UserRepo))
 	{
 		features.GET("/users/:id", deps.UserHandler.GetPublicProfile)
-		// Future feature routes (matchmaking, rooms, friends, etc.) go here
+		
+		// Room & Lobby Routes
+		rooms := features.Group("/rooms")
+		{
+			rooms.POST("", deps.RoomHandler.CreateLobby)
+			rooms.GET("", deps.RoomHandler.ListLobbies)
+			rooms.GET("/:id", deps.RoomHandler.GetRoom)
+			rooms.POST("/:id/request-join", deps.RoomHandler.RequestJoin)
+			rooms.POST("/:id/respond", deps.RoomHandler.RespondJoinRequest)
+			rooms.POST("/:id/leave", deps.RoomHandler.LeaveRoom)
+			rooms.POST("/:id/kick", deps.RoomHandler.KickUser)
+			rooms.GET("/:id/messages", deps.RoomHandler.GetChatHistory)
+		}
 	}
 }

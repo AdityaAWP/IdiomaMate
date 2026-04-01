@@ -12,6 +12,10 @@ import (
 // Concrete implementations live in internal/service/.
 // =============================================================================
 
+type NotificationService interface {
+	NotifyUser(userID uuid.UUID, wsType WSMessageType, payload interface{})
+}
+
 // --- Auth Service ---
 
 type AuthService interface {
@@ -45,7 +49,8 @@ type RoomService interface {
 	CreateLobby(ctx context.Context, masterID uuid.UUID, req CreateLobbyRequest) (*Room, error)
 	GetRoom(ctx context.Context, roomID uuid.UUID) (*Room, error)
 	ListLobbies(ctx context.Context, targetLanguage, proficiencyLevel string, page, pageSize int) (*LobbyListResponse, error)
-	JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error
+	RequestJoin(ctx context.Context, roomID, userID uuid.UUID) error
+	RespondJoinRequest(ctx context.Context, roomID, masterID, targetUserID uuid.UUID, accept bool) error
 	LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	CloseRoom(ctx context.Context, roomID, masterID uuid.UUID) error
 	KickUser(ctx context.Context, roomID, masterID, targetUserID uuid.UUID) error

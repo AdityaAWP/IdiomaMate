@@ -86,6 +86,21 @@ func (r *roomRepository) RemoveParticipant(ctx context.Context, roomID, userID u
 		Delete(&domain.RoomParticipant{}).Error
 }
 
+func (r *roomRepository) GetParticipant(ctx context.Context, roomID, userID uuid.UUID) (*domain.RoomParticipant, error) {
+	var part domain.RoomParticipant
+	err := r.db.WithContext(ctx).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		First(&part).Error
+	return &part, err
+}
+
+func (r *roomRepository) UpdateParticipantStatus(ctx context.Context, roomID, userID uuid.UUID, status domain.JoinStatus) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.RoomParticipant{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Update("status", status).Error
+}
+
 func (r *roomRepository) GetParticipants(ctx context.Context, roomID uuid.UUID) ([]domain.RoomParticipant, error) {
 	var participants []domain.RoomParticipant
 	err := r.db.WithContext(ctx).
@@ -95,11 +110,19 @@ func (r *roomRepository) GetParticipants(ctx context.Context, roomID uuid.UUID) 
 	return participants, err
 }
 
+func (r *roomRepository) GetMaster(ctx context.Context, roomID uuid.UUID) (*domain.RoomParticipant, error) {
+	var part domain.RoomParticipant
+	err := r.db.WithContext(ctx).
+		Where("room_id = ? AND role = ?", roomID, domain.ParticipantRoleGroupMaster).
+		First(&part).Error
+	return &part, err
+}
+
 func (r *roomRepository) CountParticipants(ctx context.Context, roomID uuid.UUID) (int, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&domain.RoomParticipant{}).
-		Where("room_id = ?", roomID).
+		Where("room_id = ? AND status = ?", roomID, domain.JoinStatusAccepted).
 		Count(&count).Error
 	return int(count), err
 }

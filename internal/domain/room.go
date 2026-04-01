@@ -23,6 +23,15 @@ const (
 	RoomStatusClosed  RoomStatus = "CLOSED"
 )
 
+// JoinStatus tracks a user's request to join a lobby.
+type JoinStatus string
+
+const (
+	JoinStatusPending  JoinStatus = "PENDING"
+	JoinStatusAccepted JoinStatus = "ACCEPTED"
+	JoinStatusDeclined JoinStatus = "DECLINED"
+)
+
 // ParticipantRole differentiates the group master from regular members.
 type ParticipantRole string
 
@@ -52,6 +61,7 @@ type RoomParticipant struct {
 	RoomID   uuid.UUID       `json:"room_id" gorm:"type:uuid;not null;index"`
 	UserID   uuid.UUID       `json:"user_id" gorm:"type:uuid;not null;index"`
 	Role     ParticipantRole `json:"role" gorm:"type:varchar(15);not null;default:'MEMBER'"`
+	Status   JoinStatus      `json:"status" gorm:"type:varchar(15);not null;default:'PENDING'"`
 	JoinedAt time.Time       `json:"joined_at"`
 
 	// Relations (for GORM preloading)
@@ -65,6 +75,15 @@ type CreateLobbyRequest struct {
 	Title            string `json:"title" binding:"required,min=3,max=100"`
 	TargetLanguage   string `json:"target_language" binding:"required"`
 	ProficiencyLevel string `json:"proficiency_level" binding:"required,oneof=beginner intermediate advanced"`
+}
+
+type RespondJoinRequest struct {
+	UserID uuid.UUID `json:"user_id" binding:"required"`
+	Accept bool      `json:"accept"`
+}
+
+type KickUserRequest struct {
+	UserID uuid.UUID `json:"user_id" binding:"required"`
 }
 
 type LobbyListResponse struct {

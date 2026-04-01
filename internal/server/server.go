@@ -56,18 +56,25 @@ func (s *Server) Run() error {
 		matchRepo = valkey.NewMatchmakingRepository(valkeyClient)
 	}
 
-	// 2. Initialize Services
+	// 2. Initialize Services (Bottom-Up)
 	jwtExpiration := time.Duration(s.cfg.JWT.Expiration) * time.Hour
 	authService := service.NewAuthService(userRepo, s.cfg.JWT.Secret, jwtExpiration)
 	userService := service.NewUserService(userRepo)
 	matchService := service.NewMatchmakingService(matchRepo, userRepo, roomRepo)
 
-	// 3. Initialize Handlers and Hub
+	messageRepo := postgres.NewMessageRepository(db)
+	messageService := service.NewMessageService(messageRepo, roomRepo)
+
+	// Dependency loop resolution: Hub requires matchService/messageSvc, RoomService requires Hub.
+	hub := ws.NewHub(matchService, messageService, roomRepo)
+	go hub.Run()
+
+	roomService := service.NewRoomService(roomRepo, hub)
+
+	// 3. Initialize Handlers
 	authHandler := httpHandler.NewAuthHandler(authService, s.cfg.Google.ClientID)
 	userHandler := httpHandler.NewUserHandler(userService)
-
-	hub := ws.NewHub(matchService)
-	go hub.Run()
+	roomHandler := httpHandler.NewRoomHandler(roomService, messageService)
 
 	// Handle WebSocket Route explicitly here since it requires the hub
 	s.router.GET("/api/v1/ws", middleware.JWTAuth(s.cfg.JWT.Secret), middleware.ProfileComplete(userRepo), func(c *gin.Context) {
@@ -78,6 +85,7 @@ func (s *Server) Run() error {
 	deps := &routes.Dependencies{
 		AuthHandler: authHandler,
 		UserHandler: userHandler,
+		RoomHandler: roomHandler,
 		UserRepo:    userRepo,
 		JWTSecret:   s.cfg.JWT.Secret,
 	}

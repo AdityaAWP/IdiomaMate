@@ -20,15 +20,19 @@ type Hub struct {
 	Register   chan *Client
 	Unregister chan *Client
 
-	matchService domain.MatchmakingService
+	matchService   domain.MatchmakingService
+	messageService domain.MessageService
+	roomRepo       domain.RoomRepository
 }
 
-func NewHub(matchService domain.MatchmakingService) *Hub {
+func NewHub(matchSvc domain.MatchmakingService, msgSvc domain.MessageService, roomR domain.RoomRepository) *Hub {
 	return &Hub{
-		clients:      make(map[uuid.UUID]*Client),
-		Register:     make(chan *Client),
-		Unregister:   make(chan *Client),
-		matchService: matchService,
+		clients:        make(map[uuid.UUID]*Client),
+		Register:       make(chan *Client),
+		Unregister:     make(chan *Client),
+		matchService:   matchSvc,
+		messageService: msgSvc,
+		roomRepo:       roomR,
 	}
 }
 
@@ -75,6 +79,8 @@ func (h *Hub) HandleMessage(client *Client, msg domain.WSMessage) {
 		h.handleMatchSearch(client)
 	case domain.WSTypeMatchCancelled:
 		h.handleMatchCancel(client)
+	case domain.WSTypeChatMessage:
+		h.handleChatMessage(client, msg)
 	case domain.WSTypePing:
 		client.SendMessage(domain.WSMessage{Type: domain.WSTypePong})
 	default:
@@ -170,6 +176,54 @@ func (h *Hub) handleMatchCancel(client *Client) {
 	})
 }
 
+// handleChatMessage processes an incoming chat message and broadcasts it.
+func (h *Hub) handleChatMessage(client *Client, msg domain.WSMessage) {
+	var payload domain.WSChatMessagePayload
+	if err := marshalPayload(msg.Payload, &payload); err != nil {
+		client.SendMessage(domain.WSMessage{
+			Type:    domain.WSTypeError,
+			Payload: "invalid chat payload",
+		})
+		return
+	}
+
+	// Save to DB
+	savedMsg, err := h.messageService.SaveMessage(context.Background(), payload.RoomID, client.UserID, payload.Content)
+	if err != nil {
+		client.SendMessage(domain.WSMessage{
+			Type:    domain.WSTypeError,
+			Payload: "failed to send message",
+		})
+		return
+	}
+
+	// Fetch room participants to broadcast
+	participants, err := h.roomRepo.GetParticipants(context.Background(), payload.RoomID)
+	if err != nil {
+		return
+	}
+
+	broadcastMsg := domain.WSMessage{
+		Type: domain.WSTypeChatMessage,
+		Payload: domain.WSChatBroadcast{
+			MessageID: savedMsg.ID,
+			RoomID:    savedMsg.RoomID,
+			SenderID:  savedMsg.SenderID,
+			Content:   savedMsg.Content,
+			CreatedAt: savedMsg.CreatedAt,
+		},
+	}
+
+	// Broadcast to all connected participants in the room
+	for _, p := range participants {
+		// Do not echo back to sender if you don't want to, but standard chat 
+		// generally echoes back to confirm delivery.
+		if subscriber := h.GetClient(p.UserID); subscriber != nil {
+			subscriber.SendMessage(broadcastMsg)
+		}
+	}
+}
+
 // marshalPayload is a helper to decode the Payload from a WSMessage into a typed struct.
 func marshalPayload(payload interface{}, target interface{}) error {
 	data, err := json.Marshal(payload)
@@ -177,4 +231,15 @@ func marshalPayload(payload interface{}, target interface{}) error {
 		return err
 	}
 	return json.Unmarshal(data, target)
+}
+
+// NotifyUser sends a real-time message to a specific user if they are connected.
+func (h *Hub) NotifyUser(userID uuid.UUID, wsType domain.WSMessageType, payload interface{}) {
+	client := h.GetClient(userID)
+	if client != nil {
+		client.SendMessage(domain.WSMessage{
+			Type:    wsType,
+			Payload: payload,
+		})
+	}
 }

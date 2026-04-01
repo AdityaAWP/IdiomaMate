@@ -1,5 +1,11 @@
 package domain
 
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
 // WebSocket message types for real-time communication.
 type WSMessageType string
 
@@ -38,4 +44,19 @@ const (
 type WSMessage struct {
 	Type    WSMessageType `json:"type"`
 	Payload interface{}   `json:"payload,omitempty"`
+}
+
+// --- Specific Payloads ---
+
+type WSChatMessagePayload struct {
+	RoomID  uuid.UUID `json:"room_id"`
+	Content string    `json:"content"`
+}
+
+type WSChatBroadcast struct {
+	MessageID uuid.UUID `json:"message_id"`
+	RoomID    uuid.UUID `json:"room_id"`
+	SenderID  uuid.UUID `json:"sender_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
 }

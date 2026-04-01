@@ -12,6 +12,7 @@ func Migrate(db *gorm.DB) error {
 		&domain.User{},
 		&domain.Room{},
 		&domain.RoomParticipant{},
+		&domain.MatchmakingQueue{},
 		&domain.Message{},
 		&domain.Friendship{},
 		&domain.DirectMessage{},
