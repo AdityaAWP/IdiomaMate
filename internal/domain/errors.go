@@ -10,6 +10,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid email or password")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrShadowBanned       = errors.New("account restricted")
+	ErrProfileIncomplete  = errors.New("please complete your profile: native_language, target_language, and proficiency_level are required")
 )
 
 // --- Room & Matchmaking Errors ---

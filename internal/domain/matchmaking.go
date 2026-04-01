@@ -17,5 +17,6 @@ type MatchResult struct {
 	AgoraChannelName string    `json:"agora_channel_name"`
 	AgoraToken       string    `json:"agora_token,omitempty"`
 	PartnerID        uuid.UUID `json:"partner_id"`
-	PartnerUsername   string    `json:"partner_username"`
+	PartnerUsername  string    `json:"partner_username"`
+	MyUsername       string    `json:"-"` // Not sent to client; used by Hub to build the partner's result
 }
