@@ -64,6 +64,10 @@ func (s *authService) Login(ctx context.Context, req domain.LoginRequest) (*doma
 		return nil, domain.ErrInvalidCredentials
 	}
 
+	if user.IsShadowBanned {
+		return nil, domain.ErrShadowBanned
+	}
+
 	token, err := auth.GenerateToken(user.ID, s.jwtSecret, s.jwtExpiration)
 	if err != nil {
 		return nil, err

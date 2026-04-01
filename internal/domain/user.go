@@ -4,24 +4,25 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // User represents a registered user in the system.
 type User struct {
-	ID               uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	Username         string     `json:"username" gorm:"uniqueIndex;not null"`
-	Email            string     `json:"email" gorm:"uniqueIndex;not null"`
-	PasswordHash     string     `json:"-" gorm:"not null"`
-	GoogleID         *string    `json:"-" gorm:"uniqueIndex"`
-	AvatarURL        string     `json:"avatar_url"`
-	NativeLanguage   string     `json:"native_language"`
-	TargetLanguage   string     `json:"target_language"`
-	ProficiencyLevel string     `json:"proficiency_level"` // beginner, intermediate, advanced
-	ReputationScore  float64    `json:"reputation_score" gorm:"default:5.0"`
-	IsShadowBanned   bool       `json:"-" gorm:"default:false"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	DeletedAt        *time.Time `json:"-" gorm:"index"`
+	ID               uuid.UUID      `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	Username         string         `json:"username" gorm:"uniqueIndex;not null"`
+	Email            string         `json:"email" gorm:"uniqueIndex;not null"`
+	PasswordHash     string         `json:"-"`
+	GoogleID         *string        `json:"-" gorm:"uniqueIndex"`
+	AvatarURL        string         `json:"avatar_url"`
+	NativeLanguage   string         `json:"native_language"`
+	TargetLanguage   string         `json:"target_language"`
+	ProficiencyLevel string         `json:"proficiency_level"` // beginner, intermediate, advanced
+	ReputationScore  float64        `json:"reputation_score" gorm:"default:5.0"`
+	IsShadowBanned   bool           `json:"-" gorm:"default:false"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 // --- Request / Response DTOs ---
