@@ -2,5 +2,8 @@
 config.yaml
 api.exe
 tmp/
+<<<<<<< Updated upstream
 cmd/seeder/main.go
+=======
+>>>>>>> Stashed changes
 tests/benchmark/

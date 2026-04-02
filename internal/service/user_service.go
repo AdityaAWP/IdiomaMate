@@ -54,6 +54,9 @@ func (s *userService) UpdateProfile(ctx context.Context, userID uuid.UUID, req d
 		user.NativeLanguage = *req.NativeLanguage
 	}
 	if req.TargetLanguage != nil {
+		if !domain.IsValidTargetLanguage(*req.TargetLanguage) {
+			return nil, domain.ErrInvalidLanguage
+		}
 		user.TargetLanguage = *req.TargetLanguage
 	}
 	if req.ProficiencyLevel != nil {

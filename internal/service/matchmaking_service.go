@@ -41,6 +41,10 @@ func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID, qu
 		return nil, domain.ErrProfileIncomplete
 	}
 
+	if !domain.IsValidTargetLanguage(user.TargetLanguage) {
+		return nil, domain.ErrInvalidLanguage
+	}
+
 	// 2. Try to dequeue a waiting partner from the same queue
 	partnerReq, err := s.matchRepo.Dequeue(ctx, user.TargetLanguage, user.ProficiencyLevel)
 	if err != nil {

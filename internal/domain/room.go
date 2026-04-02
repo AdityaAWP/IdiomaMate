@@ -73,7 +73,7 @@ type RoomParticipant struct {
 
 type CreateLobbyRequest struct {
 	Title            string `json:"title" binding:"required,min=3,max=100"`
-	TargetLanguage   string `json:"target_language" binding:"required"`
+	TargetLanguage   string `json:"target_language" binding:"required,oneof=english french spanish russian mandarin arabic"`
 	ProficiencyLevel string `json:"proficiency_level" binding:"required,oneof=beginner intermediate advanced"`
 }
 

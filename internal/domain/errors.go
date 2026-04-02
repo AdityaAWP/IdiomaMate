@@ -11,6 +11,7 @@ var (
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrShadowBanned       = errors.New("account restricted")
 	ErrProfileIncomplete  = errors.New("please complete your profile: native_language, target_language, and proficiency_level are required")
+	ErrInvalidLanguage    = errors.New("invalid target language: must be one of english, french, spanish, russian, mandarin, arabic")
 )
 
 // --- Room & Matchmaking Errors ---

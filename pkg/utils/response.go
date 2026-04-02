@@ -26,6 +26,8 @@ var domainErrorMap = map[error]struct {
 	domain.ErrInvalidCredentials:    {http.StatusUnauthorized, "INVALID_CREDENTIALS"},
 	domain.ErrUnauthorized:          {http.StatusUnauthorized, "UNAUTHORIZED"},
 	domain.ErrShadowBanned:          {http.StatusForbidden, "ACCOUNT_RESTRICTED"},
+	domain.ErrProfileIncomplete:     {http.StatusBadRequest, "PROFILE_INCOMPLETE"},
+	domain.ErrInvalidLanguage:       {http.StatusBadRequest, "INVALID_LANGUAGE"},
 
 	// Room & Matchmaking
 	domain.ErrRoomNotFound:     {http.StatusNotFound, "ROOM_NOT_FOUND"},

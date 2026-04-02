@@ -44,7 +44,7 @@ type GoogleLoginRequest struct {
 
 type UpdateProfileRequest struct {
 	NativeLanguage   *string `json:"native_language"`
-	TargetLanguage   *string `json:"target_language"`
+	TargetLanguage   *string `json:"target_language" binding:"omitempty,oneof=english french spanish russian mandarin arabic"`
 	ProficiencyLevel *string `json:"proficiency_level" binding:"omitempty,oneof=beginner intermediate advanced"`
 	AvatarURL        *string `json:"avatar_url"`
 }
