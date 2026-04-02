@@ -3,9 +3,12 @@ package postgres
 import (
 	"context"
 
+	"encoding/json"
+
 	"github.com/AdityaAWP/IdiomaMate/internal/domain"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -23,11 +26,13 @@ func NewMatchmakingRepository(db *gorm.DB) domain.MatchmakingRepository {
 
 // Enqueue inserts a user into the matchmaking_queues table.
 func (r *matchmakingRepository) Enqueue(ctx context.Context, req domain.MatchRequest) error {
+	qBytes, _ := json.Marshal(req.Questions)
 	entry := domain.MatchmakingQueue{
 		ID:               uuid.New(),
 		UserID:           req.UserID,
 		TargetLanguage:   req.TargetLanguage,
 		ProficiencyLevel: req.ProficiencyLevel,
+		Questions:        datatypes.JSON(qBytes),
 	}
 	return r.db.WithContext(ctx).Create(&entry).Error
 }
@@ -64,10 +69,16 @@ func (r *matchmakingRepository) Dequeue(ctx context.Context, targetLanguage, pro
 		return nil, err
 	}
 
+	var questions []string
+	if len(entry.Questions) > 0 {
+		_ = json.Unmarshal(entry.Questions, &questions)
+	}
+
 	return &domain.MatchRequest{
 		UserID:           entry.UserID,
 		TargetLanguage:   entry.TargetLanguage,
 		ProficiencyLevel: entry.ProficiencyLevel,
+		Questions:        questions,
 	}, nil
 }
 

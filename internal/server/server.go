@@ -16,6 +16,7 @@ import (
 	"github.com/AdityaAWP/IdiomaMate/internal/domain"
 	"github.com/AdityaAWP/IdiomaMate/pkg/database"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,9 +26,21 @@ type Server struct {
 }
 
 func NewServer(cfg *config.Config) *Server {
+	router := gin.Default()
+
+	// Global CORS middleware
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Adjust this in production
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	return &Server{
 		cfg:    cfg,
-		router: gin.Default(),
+		router: router,
 	}
 }
 
@@ -67,20 +80,29 @@ func (s *Server) Run() error {
 
 	friendshipRepo := postgres.NewFriendshipRepository(db)
 	dmRepo := postgres.NewDirectMessageRepository(db)
+	vocabRepo := postgres.NewVocabularyRepository(db)
+	topicRepo := postgres.NewTopicRepository(db)
+
+	// Add External Services
+	agoraService := service.NewAgoraService(s.cfg.Agora.AppID, s.cfg.Agora.AppCertificate)
+	aiService := service.NewAIGeneratorService(s.cfg.Google.GeminiAPIKey)
 
 	// Dependency loop resolution: Hub requires matchService/messageSvc, RoomService requires Hub.
-	hub := ws.NewHub(matchService, messageService, roomRepo)
+	hub := ws.NewHub(matchService, messageService, roomRepo, aiService)
 	go hub.Run()
 
 	roomService := service.NewRoomService(roomRepo, hub)
 	friendshipService := service.NewFriendshipService(friendshipRepo, userRepo, hub)
 	dmService := service.NewDirectMessageService(dmRepo, friendshipRepo, hub)
+	vocabService := service.NewVocabularyService(vocabRepo)
+	topicService := service.NewTopicService(topicRepo)
 
 	// 3. Initialize Handlers
 	authHandler := httpHandler.NewAuthHandler(authService, s.cfg.Google.ClientID)
 	userHandler := httpHandler.NewUserHandler(userService)
-	roomHandler := httpHandler.NewRoomHandler(roomService, messageService)
+	roomHandler := httpHandler.NewRoomHandler(roomService, messageService, agoraService)
 	friendshipHandler := httpHandler.NewFriendshipHandler(friendshipService, dmService)
+	vocabHandler := httpHandler.NewVocabularyHandler(vocabService, topicService)
 
 	// Handle WebSocket Route explicitly here since it requires the hub
 	s.router.GET("/api/v1/ws", middleware.JWTAuth(s.cfg.JWT.Secret), middleware.ProfileComplete(userRepo), func(c *gin.Context) {
@@ -93,6 +115,7 @@ func (s *Server) Run() error {
 		UserHandler:       userHandler,
 		RoomHandler:       roomHandler,
 		FriendshipHandler: friendshipHandler,
+		VocabularyHandler: vocabHandler,
 		UserRepo:          userRepo,
 		JWTSecret:         s.cfg.JWT.Secret,
 	}

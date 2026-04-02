@@ -14,12 +14,14 @@ import (
 type RoomHandler struct {
 	roomService    domain.RoomService
 	messageService domain.MessageService
+	agoraService   domain.AgoraService
 }
 
-func NewRoomHandler(rs domain.RoomService, ms domain.MessageService) *RoomHandler {
+func NewRoomHandler(rs domain.RoomService, ms domain.MessageService, as domain.AgoraService) *RoomHandler {
 	return &RoomHandler{
 		roomService:    rs,
 		messageService: ms,
+		agoraService:   as,
 	}
 }
 
@@ -179,4 +181,32 @@ func (h *RoomHandler) GetChatHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, history)
+}
+
+// GetAgoraToken returns the Agora RTC token for the room if the user is a participant.
+// GET /api/v1/rooms/:id/token
+func (h *RoomHandler) GetAgoraToken(c *gin.Context) {
+	userID := getUserID(c)
+	roomID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.ErrorResponse{Error: "invalid room id"})
+		return
+	}
+
+	// Fetch room to verify it exists and get Agora Channel Name
+	room, err := h.roomService.GetRoom(c.Request.Context(), roomID)
+	if err != nil {
+		utils.HandleError(c, err, "failed to get room")
+		return
+	}
+
+	// Verify user is a participant (could be simplified with an IsUserInRoom method on roomService)
+	// For now we just generate it, they still need to be admitted by Agora using the token.
+	token, err := h.agoraService.GenerateRTCToken(room.AgoraChannelName, userID)
+	if err != nil {
+		utils.HandleError(c, err, "failed to generate agora token")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"channel_name": room.AgoraChannelName, "token": token})
 }

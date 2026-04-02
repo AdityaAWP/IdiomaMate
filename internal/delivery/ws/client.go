@@ -29,6 +29,7 @@ type Client struct {
 	TargetLanguage   string
 	ProficiencyLevel string
 	IsMatchmaking    bool
+	Questions        []string
 }
 
 // ReadPump reads messages from the WebSocket connection and routes them to the Hub.

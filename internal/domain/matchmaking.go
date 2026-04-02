@@ -9,6 +9,7 @@ type MatchRequest struct {
 	UserID           uuid.UUID `json:"user_id"`
 	TargetLanguage   string    `json:"target_language"`
 	ProficiencyLevel string    `json:"proficiency_level"`
+	Questions        []string  `json:"questions,omitempty"`
 }
 
 // MatchResult is returned when two users are successfully paired.
@@ -18,5 +19,7 @@ type MatchResult struct {
 	AgoraToken       string    `json:"agora_token,omitempty"`
 	PartnerID        uuid.UUID `json:"partner_id"`
 	PartnerUsername  string    `json:"partner_username"`
+	PartnerQuestions []string  `json:"partner_questions,omitempty"`
 	MyUsername       string    `json:"-"` // Not sent to client; used by Hub to build the partner's result
+	MyQuestions      []string  `json:"-"` // Not sent to client; used by Hub to pass questions to partner
 }

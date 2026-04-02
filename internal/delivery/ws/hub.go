@@ -23,9 +23,10 @@ type Hub struct {
 	matchService   domain.MatchmakingService
 	messageService domain.MessageService
 	roomRepo       domain.RoomRepository
+	aiService      domain.AIGeneratorService
 }
 
-func NewHub(matchSvc domain.MatchmakingService, msgSvc domain.MessageService, roomR domain.RoomRepository) *Hub {
+func NewHub(matchSvc domain.MatchmakingService, msgSvc domain.MessageService, roomR domain.RoomRepository, aiSvc domain.AIGeneratorService) *Hub {
 	return &Hub{
 		clients:        make(map[uuid.UUID]*Client),
 		Register:       make(chan *Client),
@@ -33,6 +34,7 @@ func NewHub(matchSvc domain.MatchmakingService, msgSvc domain.MessageService, ro
 		matchService:   matchSvc,
 		messageService: msgSvc,
 		roomRepo:       roomR,
+		aiService:      aiSvc,
 	}
 }
 
@@ -76,11 +78,13 @@ func (h *Hub) GetClient(userID uuid.UUID) *Client {
 func (h *Hub) HandleMessage(client *Client, msg domain.WSMessage) {
 	switch msg.Type {
 	case domain.WSTypeMatchSearch:
-		h.handleMatchSearch(client)
+		h.handleMatchSearch(client, msg)
 	case domain.WSTypeMatchCancelled:
 		h.handleMatchCancel(client)
 	case domain.WSTypeChatMessage:
 		h.handleChatMessage(client, msg)
+	case domain.WSTypeGenerateTOD:
+		h.handleGenerateTOD(client, msg)
 	case domain.WSTypePing:
 		client.SendMessage(domain.WSMessage{Type: domain.WSTypePong})
 	default:
@@ -92,7 +96,7 @@ func (h *Hub) HandleMessage(client *Client, msg domain.WSMessage) {
 }
 
 // handleMatchSearch attempts to find a match for the client.
-func (h *Hub) handleMatchSearch(client *Client) {
+func (h *Hub) handleMatchSearch(client *Client, msg domain.WSMessage) {
 	if client.IsMatchmaking {
 		client.SendMessage(domain.WSMessage{
 			Type:    domain.WSTypeError,
@@ -101,7 +105,13 @@ func (h *Hub) handleMatchSearch(client *Client) {
 		return
 	}
 
-	result, err := h.matchService.FindMatch(context.Background(), client.UserID)
+	var payload domain.WSMatchSearchPayload
+	if msg.Payload != nil {
+		_ = marshalPayload(msg.Payload, &payload)
+	}
+	client.Questions = payload.Questions
+
+	result, err := h.matchService.FindMatch(context.Background(), client.UserID, client.Questions)
 	if err != nil {
 		client.SendMessage(domain.WSMessage{
 			Type:    domain.WSTypeMatchError,
@@ -137,7 +147,8 @@ func (h *Hub) handleMatchSearch(client *Client) {
 			RoomID:           result.RoomID,
 			AgoraChannelName: result.AgoraChannelName,
 			PartnerID:        client.UserID,
-			PartnerUsername:   result.MyUsername, // searcher's username is the partner's "partner"
+			PartnerUsername:  result.MyUsername, // searcher's username is the partner's "partner"
+			PartnerQuestions: result.MyQuestions,
 		}
 
 		partner.SendMessage(domain.WSMessage{
@@ -222,6 +233,58 @@ func (h *Hub) handleChatMessage(client *Client, msg domain.WSMessage) {
 			subscriber.SendMessage(broadcastMsg)
 		}
 	}
+}
+
+// handleGenerateTOD generates and broadcasts a Truth or Dare question to the room.
+func (h *Hub) handleGenerateTOD(client *Client, msg domain.WSMessage) {
+	var payload domain.WSTODPayload
+	if err := marshalPayload(msg.Payload, &payload); err != nil {
+		client.SendMessage(domain.WSMessage{Type: domain.WSTypeError, Payload: "invalid tod payload"})
+		return
+	}
+
+	// Fetch room to get target language and proficiency level
+	room, err := h.roomRepo.GetByID(context.Background(), payload.RoomID)
+	if err != nil {
+		client.SendMessage(domain.WSMessage{Type: domain.WSTypeError, Payload: "room not found"})
+		return
+	}
+
+	// Check if user is in room
+	inRoom, err := h.roomRepo.IsUserInRoom(context.Background(), payload.RoomID, client.UserID)
+	if err != nil || !inRoom {
+		client.SendMessage(domain.WSMessage{Type: domain.WSTypeError, Payload: "not in room"})
+		return
+	}
+
+	// Generate TOD asynchronously so we don't block the Hub routine
+	go func() {
+		todText, err := h.aiService.GenerateTOD(context.Background(), room.TargetLanguage, room.ProficiencyLevel)
+		if err != nil {
+			log.Printf("TOD Generation failed: %v", err)
+			client.SendMessage(domain.WSMessage{Type: domain.WSTypeError, Payload: "failed to generate TOD: " + err.Error()})
+			return
+		}
+
+		// Fetch room participants to broadcast
+		participants, err := h.roomRepo.GetParticipants(context.Background(), payload.RoomID)
+		if err != nil {
+			return
+		}
+
+		broadcastMsg := domain.WSMessage{
+			Type:    domain.WSTypeTODResult,
+			Payload: todText,
+		}
+
+		h.mu.RLock()
+		defer h.mu.RUnlock()
+		for _, p := range participants {
+			if subscriber, ok := h.clients[p.UserID]; ok {
+				subscriber.SendMessage(broadcastMsg)
+			}
+		}
+	}()
 }
 
 // marshalPayload is a helper to decode the Payload from a WSMessage into a typed struct.

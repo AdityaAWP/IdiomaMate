@@ -15,6 +15,7 @@ type Dependencies struct {
 	UserHandler       *httpHandler.UserHandler
 	RoomHandler       *httpHandler.RoomHandler
 	FriendshipHandler *httpHandler.FriendshipHandler
+	VocabularyHandler *httpHandler.VocabularyHandler
 	UserRepo          domain.UserRepository
 	JWTSecret         string
 }
@@ -55,11 +56,12 @@ func SetupRoutes(router *gin.Engine, deps *Dependencies) {
 			rooms.POST("", deps.RoomHandler.CreateLobby)
 			rooms.GET("", deps.RoomHandler.ListLobbies)
 			rooms.GET("/:id", deps.RoomHandler.GetRoom)
+			rooms.GET("/:id/token", deps.RoomHandler.GetAgoraToken)
+			rooms.GET("/:id/messages", deps.RoomHandler.GetChatHistory)
 			rooms.POST("/:id/request-join", deps.RoomHandler.RequestJoin)
 			rooms.POST("/:id/respond", deps.RoomHandler.RespondJoinRequest)
 			rooms.POST("/:id/leave", deps.RoomHandler.LeaveRoom)
 			rooms.POST("/:id/kick", deps.RoomHandler.KickUser)
-			rooms.GET("/:id/messages", deps.RoomHandler.GetChatHistory)
 		}
 
 		// Friendship Routes
@@ -77,5 +79,16 @@ func SetupRoutes(router *gin.Engine, deps *Dependencies) {
 			dm.POST("/:user_id", deps.FriendshipHandler.SendDM)
 			dm.GET("/:user_id", deps.FriendshipHandler.GetConversation)
 		}
+
+		// Vocabulary Routes
+		vocab := features.Group("/vocabulary")
+		{
+			vocab.POST("", deps.VocabularyHandler.SaveWord)
+			vocab.GET("", deps.VocabularyHandler.ListWords)
+			vocab.DELETE("/:id", deps.VocabularyHandler.DeleteWord)
+		}
+
+		// Topic Generator
+		features.GET("/topics/random", deps.VocabularyHandler.GetRandomTopic)
 	}
 }

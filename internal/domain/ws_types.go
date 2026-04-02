@@ -25,6 +25,8 @@ const (
 	WSTypeUserKicked      WSMessageType = "USER_KICKED"
 	WSTypeRoomClosed      WSMessageType = "ROOM_CLOSED"
 	WSTypeSuggestTopic    WSMessageType = "SUGGEST_TOPIC"
+	WSTypeGenerateTOD     WSMessageType = "GENERATE_TOD"
+	WSTypeTODResult       WSMessageType = "TOD_RESULT"
 
 	// --- Chat ---
 	WSTypeChatMessage     WSMessageType = "CHAT_MESSAGE"
@@ -47,6 +49,14 @@ type WSMessage struct {
 }
 
 // --- Specific Payloads ---
+
+type WSMatchSearchPayload struct {
+	Questions []string `json:"questions,omitempty"`
+}
+
+type WSTODPayload struct {
+	RoomID uuid.UUID `json:"room_id"`
+}
 
 type WSChatMessagePayload struct {
 	RoomID  uuid.UUID `json:"room_id"`

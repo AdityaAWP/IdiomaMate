@@ -2,6 +2,7 @@ package valkey
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/AdityaAWP/IdiomaMate/internal/domain"
@@ -30,6 +31,12 @@ func queueKey(targetLanguage, proficiencyLevel string) string {
 // O(1) via RPUSH.
 func (r *matchmakingRepository) Enqueue(ctx context.Context, req domain.MatchRequest) error {
 	key := queueKey(req.TargetLanguage, req.ProficiencyLevel)
+	dataKey := "queue:data:" + req.UserID.String()
+	qBytes, _ := json.Marshal(req.Questions)
+	
+	// Store questions in a temporary key (1 hour expiry should be safe)
+	_ = r.client.Do(ctx, r.client.B().Set().Key(dataKey).Value(string(qBytes)).ExSeconds(3600).Build()).Error()
+
 	return r.client.Do(ctx, r.client.B().Rpush().Key(key).Element(req.UserID.String()).Build()).Error()
 }
 
@@ -51,10 +58,19 @@ func (r *matchmakingRepository) Dequeue(ctx context.Context, targetLanguage, pro
 		return nil, fmt.Errorf("corrupt queue entry: %w", err)
 	}
 
+	dataKey := "queue:data:" + userID.String()
+	qResult, _ := r.client.Do(ctx, r.client.B().Get().Key(dataKey).Build()).AsBytes()
+	var questions []string
+	if len(qResult) > 0 {
+		_ = json.Unmarshal(qResult, &questions)
+		_ = r.client.Do(ctx, r.client.B().Del().Key(dataKey).Build())
+	}
+
 	return &domain.MatchRequest{
 		UserID:           userID,
 		TargetLanguage:   targetLanguage,
 		ProficiencyLevel: proficiencyLevel,
+		Questions:        questions,
 	}, nil
 }
 
@@ -62,5 +78,7 @@ func (r *matchmakingRepository) Dequeue(ctx context.Context, targetLanguage, pro
 // O(N) via LREM, but N is typically very small for a single queue partition.
 func (r *matchmakingRepository) Remove(ctx context.Context, userID uuid.UUID, targetLanguage, proficiencyLevel string) error {
 	key := queueKey(targetLanguage, proficiencyLevel)
+	dataKey := "queue:data:" + userID.String()
+	_ = r.client.Do(ctx, r.client.B().Del().Key(dataKey).Build())
 	return r.client.Do(ctx, r.client.B().Lrem().Key(key).Count(0).Element(userID.String()).Build()).Error()
 }

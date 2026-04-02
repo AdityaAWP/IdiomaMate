@@ -30,7 +30,7 @@ func NewMatchmakingService(
 // FindMatch attempts to pair the user with a waiting partner.
 // If a partner is found → creates a room and returns MatchResult.
 // If no partner is found → enqueues the user and returns nil (WebSocket will notify later).
-func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID) (*domain.MatchResult, error) {
+func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID, questions []string) (*domain.MatchResult, error) {
 	// 1. Get the searching user's profile
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -53,6 +53,7 @@ func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID) (*
 			UserID:           userID,
 			TargetLanguage:   user.TargetLanguage,
 			ProficiencyLevel: user.ProficiencyLevel,
+			Questions:        questions,
 		}
 		if err := s.matchRepo.Enqueue(ctx, enqueueReq); err != nil {
 			return nil, err
@@ -71,7 +72,7 @@ func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID) (*
 	partner, err := s.userRepo.GetByID(ctx, partnerReq.UserID)
 	if err != nil {
 		// Partner disappeared — re-try by recursing
-		return s.FindMatch(ctx, userID)
+		return s.FindMatch(ctx, userID, questions)
 	}
 
 	// 6. Create the room
@@ -107,8 +108,10 @@ func (s *matchmakingService) FindMatch(ctx context.Context, userID uuid.UUID) (*
 		RoomID:           room.ID,
 		AgoraChannelName: channelName,
 		PartnerID:        partner.ID,
-		PartnerUsername:   partner.Username,
-		MyUsername:        user.Username,
+		PartnerUsername:  partner.Username,
+		PartnerQuestions: partnerReq.Questions,
+		MyUsername:       user.Username,
+		MyQuestions:      questions,
 	}, nil
 }
 

@@ -39,7 +39,7 @@ type MatchmakingService interface {
 	// FindMatch attempts to pair the user with a waiting partner.
 	// If a partner is found, returns MatchResult immediately.
 	// If no partner is found, enqueues the user and returns nil (WebSocket will notify later).
-	FindMatch(ctx context.Context, userID uuid.UUID) (*MatchResult, error)
+	FindMatch(ctx context.Context, userID uuid.UUID, questions []string) (*MatchResult, error)
 	CancelMatch(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -104,4 +104,10 @@ type TopicService interface {
 
 type AgoraService interface {
 	GenerateRTCToken(channelName string, userID uuid.UUID) (string, error)
+}
+
+// --- AI Generator Service ---
+
+type AIGeneratorService interface {
+	GenerateTOD(ctx context.Context, targetLanguage, proficiencyLevel string) (string, error)
 }
