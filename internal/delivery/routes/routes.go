@@ -11,11 +11,12 @@ import (
 )
 
 type Dependencies struct {
-	AuthHandler *httpHandler.AuthHandler
-	UserHandler *httpHandler.UserHandler
-	RoomHandler *httpHandler.RoomHandler
-	UserRepo    domain.UserRepository
-	JWTSecret   string
+	AuthHandler       *httpHandler.AuthHandler
+	UserHandler       *httpHandler.UserHandler
+	RoomHandler       *httpHandler.RoomHandler
+	FriendshipHandler *httpHandler.FriendshipHandler
+	UserRepo          domain.UserRepository
+	JWTSecret         string
 }
 
 func SetupRoutes(router *gin.Engine, deps *Dependencies) {
@@ -59,6 +60,22 @@ func SetupRoutes(router *gin.Engine, deps *Dependencies) {
 			rooms.POST("/:id/leave", deps.RoomHandler.LeaveRoom)
 			rooms.POST("/:id/kick", deps.RoomHandler.KickUser)
 			rooms.GET("/:id/messages", deps.RoomHandler.GetChatHistory)
+		}
+
+		// Friendship Routes
+		friends := features.Group("/friends")
+		{
+			friends.POST("/request", deps.FriendshipHandler.SendFriendRequest)
+			friends.GET("", deps.FriendshipHandler.ListFriends)
+			friends.GET("/pending", deps.FriendshipHandler.ListPendingRequests)
+			friends.POST("/:id/respond", deps.FriendshipHandler.RespondToFriendRequest)
+		}
+
+		// Direct Message Routes
+		dm := features.Group("/dm")
+		{
+			dm.POST("/:user_id", deps.FriendshipHandler.SendDM)
+			dm.GET("/:user_id", deps.FriendshipHandler.GetConversation)
 		}
 	}
 }

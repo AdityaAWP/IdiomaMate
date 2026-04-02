@@ -65,16 +65,22 @@ func (s *Server) Run() error {
 	messageRepo := postgres.NewMessageRepository(db)
 	messageService := service.NewMessageService(messageRepo, roomRepo)
 
+	friendshipRepo := postgres.NewFriendshipRepository(db)
+	dmRepo := postgres.NewDirectMessageRepository(db)
+
 	// Dependency loop resolution: Hub requires matchService/messageSvc, RoomService requires Hub.
 	hub := ws.NewHub(matchService, messageService, roomRepo)
 	go hub.Run()
 
 	roomService := service.NewRoomService(roomRepo, hub)
+	friendshipService := service.NewFriendshipService(friendshipRepo, userRepo, hub)
+	dmService := service.NewDirectMessageService(dmRepo, friendshipRepo, hub)
 
 	// 3. Initialize Handlers
 	authHandler := httpHandler.NewAuthHandler(authService, s.cfg.Google.ClientID)
 	userHandler := httpHandler.NewUserHandler(userService)
 	roomHandler := httpHandler.NewRoomHandler(roomService, messageService)
+	friendshipHandler := httpHandler.NewFriendshipHandler(friendshipService, dmService)
 
 	// Handle WebSocket Route explicitly here since it requires the hub
 	s.router.GET("/api/v1/ws", middleware.JWTAuth(s.cfg.JWT.Secret), middleware.ProfileComplete(userRepo), func(c *gin.Context) {
@@ -83,11 +89,12 @@ func (s *Server) Run() error {
 
 	// 4. Setup Routes
 	deps := &routes.Dependencies{
-		AuthHandler: authHandler,
-		UserHandler: userHandler,
-		RoomHandler: roomHandler,
-		UserRepo:    userRepo,
-		JWTSecret:   s.cfg.JWT.Secret,
+		AuthHandler:       authHandler,
+		UserHandler:       userHandler,
+		RoomHandler:       roomHandler,
+		FriendshipHandler: friendshipHandler,
+		UserRepo:          userRepo,
+		JWTSecret:         s.cfg.JWT.Secret,
 	}
 	routes.SetupRoutes(s.router, deps)
 

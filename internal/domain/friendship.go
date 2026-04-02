@@ -19,8 +19,8 @@ const (
 // UserID1 is always the sender, UserID2 is the receiver.
 type Friendship struct {
 	ID        uuid.UUID        `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	UserID1   uuid.UUID        `json:"user_id_1" gorm:"type:uuid;not null;index"`   // Requester
-	UserID2   uuid.UUID        `json:"user_id_2" gorm:"type:uuid;not null;index"`   // Receiver
+	UserID1   uuid.UUID        `json:"user_id_1" gorm:"type:uuid;not null;index"` // Requester
+	UserID2   uuid.UUID        `json:"user_id_2" gorm:"type:uuid;not null;index"` // Receiver
 	Status    FriendshipStatus `json:"status" gorm:"type:varchar(10);not null;default:'PENDING'"`
 	CreatedAt time.Time        `json:"created_at"`
 	UpdatedAt time.Time        `json:"updated_at"`
@@ -55,4 +55,12 @@ type FriendRequestResponse struct {
 
 type SendDMRequest struct {
 	Content string `json:"content" binding:"required,min=1,max=2000"`
+}
+
+// FriendItem is a clean response DTO that shows only the OTHER user's info.
+type FriendItem struct {
+	FriendshipID uuid.UUID        `json:"friendship_id"`
+	Friend       UserPublicProfile `json:"friend"`
+	Status       FriendshipStatus `json:"status"`
+	Since        time.Time        `json:"since"` // When the friendship was created/accepted
 }
