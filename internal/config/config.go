@@ -16,8 +16,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port int    `mapstructure:"port"`
-	Env  string `mapstructure:"env"`
+	Port              int    `mapstructure:"port"`
+	Env               string `mapstructure:"env"`
+	MatchmakingEngine string `mapstructure:"matchmaking_engine"` // "valkey" or "postgres"
 }
 
 type JWTConfig struct {

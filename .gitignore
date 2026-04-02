@@ -2,3 +2,5 @@
 config.yaml
 api.exe
 tmp/
+cmd/api/seeder/main.go
+tests/benchmark/

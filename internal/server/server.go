@@ -61,11 +61,15 @@ func (s *Server) Run() error {
 
 	var matchRepo domain.MatchmakingRepository
 	
-	valkeyClient, err := database.ConnectValkey(s.cfg.Valkey)
-	if err != nil {
-		log.Printf("Warning: Valkey connection failed, using Postgres fallback for Matchmaking Repo: %v", err)
+	if s.cfg.App.MatchmakingEngine == "postgres" {
+		log.Println("Starting server with POSTGRES Matchmaking Engine")
 		matchRepo = postgres.NewMatchmakingRepository(db)
 	} else {
+		log.Println("Starting server with VALKEY Matchmaking Engine")
+		valkeyClient, err := database.ConnectValkey(s.cfg.Valkey)
+		if err != nil {
+			log.Fatalf("Fatal: Valkey connection failed: %v. Set matchmaking_engine to 'postgres' to avoid this.", err)
+		}
 		matchRepo = valkey.NewMatchmakingRepository(valkeyClient)
 	}
 
